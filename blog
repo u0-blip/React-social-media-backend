@@ -1,0 +1,15 @@
+Redux setup:
+    Global access to the states.
+
+Move all the UI and login states into the Reduc global variables.
+
+Sign up component:
+    Create user profile
+        create css that styles the image.
+        Profile image
+        Link to user
+        Create typography
+        Location, website icon, joined at
+    add upload button for the user profile
+    
+
