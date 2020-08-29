@@ -1,19 +1,6 @@
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
+const { admin, db } = require('../util/admin');
 
-admin.initializeApp();
-// firebase emulators:start --import=./data-path --export-on-exit --only firestore
-
-admin.firestore().settings({
-    host: "localhost:8080",
-    ssl: false
-});
-
-db = admin.firestore()
-
-
-
-exports.getScream = functions.https.onRequest((req, res) => {
+exports.getAllScreams = (req, res) => {
     db.collection('scream').get()
         .then(data => {
             const screams = [];
@@ -23,13 +10,28 @@ exports.getScream = functions.https.onRequest((req, res) => {
             return res.json(screams);
         })
         .catch(err => console.error());
-});
+};
 
-exports.postOneScream = functions.https.onRequest((req, res) => {
+exports.getScream = (req, res) => {
+    db.collection('scream').get()
+        .then(data => {
+            const screams = [];
+            data.forEach(doc => {
+                screams.push(doc.data());
+            });
+            return res.json(screams);
+        })
+        .catch(err => console.error());
+};
+
+exports.postOneScream = (req, res) => {
     const newScream = {
         body: req.body.body,
-        userHandle: req.body.userHandle,
-        createAt: admin.firestore.Timestamp.fromDate(new Date())
+        handle: req.user.handle,
+        userImage: req.user.imageUrl,
+        createAt: admin.firestore.Timestamp.fromDate(new Date()),
+        likeCount: 0,
+        commentCount: 0
     };
     db
         .collection('scream')
@@ -41,10 +43,10 @@ exports.postOneScream = functions.https.onRequest((req, res) => {
             res.status(500).json({ error: 'something went wrong' });
             console.log(err);
         });
-});
+};
 
-exports.deleteScream = functions.https.onRequest((req, res) => {
-    const document = db.doc(`/scream/${req.query.screamId}`);
+exports.deleteScream = (req, res) => {
+    const document = db.doc(`/scream/${req.params.screamId}`);
     document
         .get()
         .then((doc) => {
@@ -61,16 +63,17 @@ exports.deleteScream = functions.https.onRequest((req, res) => {
             console.error(err);
             return res.status(500).json({ error: err.code });
         });
-});
+};
 
-exports.likeScream = functions.https.onRequest((req, res) => {
+
+exports.likeScream = (req, res) => {
     const likeDocument = db
         .collection('likes')
-        .where('userHandle', '==', req.query.userHandle)
-        .where('screamId', '==', req.query.screamId)
+        .where('userHandle', '==', req.user.handle)
+        .where('screamId', '==', req.params.screamId)
         .limit(1);
 
-    const screamDocument = db.doc(`/scream/${req.query.screamId}`);
+    const screamDocument = db.doc(`/scream/${req.params.screamId}`);
     let screamData;
 
     screamDocument
@@ -87,8 +90,8 @@ exports.likeScream = functions.https.onRequest((req, res) => {
         .then((data) => {
             if (data.empty) {
                 const new_like = {
-                    userHandle: req.query.userHandle,
-                    screamId: req.query.screamId
+                    userHandle: req.user.handle,
+                    screamId: req.params.screamId
                 }
                 db
                     .collection('likes')
@@ -110,16 +113,16 @@ exports.likeScream = functions.https.onRequest((req, res) => {
             res.status(500).json({ error: err.code })
         })
 
-});
+};
 
-exports.unlikeScream = functions.https.onRequest((req, res) => {
+exports.unlikeScream = (req, res) => {
     const likeDocument = db
         .collection('likes')
-        .where('userHandle', '==', req.query.userHandle)
-        .where('screamId', '==', req.query.screamId)
+        .where('userHandle', '==', req.user.handle)
+        .where('screamId', '==', req.params.screamId)
         .limit(1);
 
-    const screamDocument = db.doc(`/scream/${req.query.screamId}`);
+    const screamDocument = db.doc(`/scream/${req.params.screamId}`);
     let screamData;
 
     screamDocument
@@ -154,11 +157,11 @@ exports.unlikeScream = functions.https.onRequest((req, res) => {
             res.status(500).json({ error: err.code })
         })
 
-});
+};
 
-exports.commentOnScream = functions.https.onRequest((req, res) => {
+exports.commentOnScream = (req, res) => {
 
-    const screamDocument = db.doc(`/scream/${req.query.screamId}`);
+    const screamDocument = db.doc(`/scream/${req.params.screamId}`);
     let screamData;
 
     screamDocument
@@ -173,8 +176,8 @@ exports.commentOnScream = functions.https.onRequest((req, res) => {
         })
         .then(() => {
             const new_comment = {
-                userHandle: req.query.userHandle,
-                screamId: req.query.screamId,
+                userHandle: req.user.handle,
+                screamId: req.params.screamId,
                 body: req.body.comment,
                 createAt: admin.firestore.Timestamp.fromDate(new Date())
             }
@@ -184,7 +187,7 @@ exports.commentOnScream = functions.https.onRequest((req, res) => {
                 .then(() => {
                     screamData.commentCount++;
                     // actually update the data in the database
-                    // return screamDocument.update({ commentCount: screamData.commentCount });
+                    return screamDocument.update({ commentCount: screamData.commentCount });
                 })
                 .then(() => {
                     return res.json(screamData)
@@ -195,11 +198,11 @@ exports.commentOnScream = functions.https.onRequest((req, res) => {
             res.status(500).json({ error: err.code })
         })
 
-});
+};
 
 
-exports.deleteComment = functions.https.onRequest((req, res) => {
-    const commentDocument = db.doc(`/comments/${req.query.commentId}`)
+exports.deleteComment = (req, res) => {
+    const commentDocument = db.doc(`/comments/${req.params.commentId}`)
 
     commentDocument
         .get()
@@ -212,7 +215,7 @@ exports.deleteComment = functions.https.onRequest((req, res) => {
         })
         .then(() => {
             return db
-                .doc(`/comments/${req.query.commentId}`)
+                .doc(`/comments/${req.params.commentId}`)
                 .delete()
                 .then(() => {
                     // screamData.likeCount--;
@@ -220,12 +223,12 @@ exports.deleteComment = functions.https.onRequest((req, res) => {
                     // return screamDocument.update({ likeCount: screamData.likeCount });
                 })
                 .then(() => {
-                    res.json(`delete ${req.query.commentId} successfully`);
+                    res.json(`delete ${req.params.commentId} successfully`);
                 });
         })
         .catch((err) => {
             console.error(err);
             res.status(500).json({ error: err.code })
         })
-});
-//# sourceMappingURL=index.js.map
+};
+
