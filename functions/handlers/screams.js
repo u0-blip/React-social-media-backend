@@ -69,7 +69,7 @@ exports.deleteScream = (req, res) => {
 exports.likeScream = (req, res) => {
     const likeDocument = db
         .collection('likes')
-        .where('userHandle', '==', req.user.handle)
+        .where('handle', '==', req.user.handle)
         .where('screamId', '==', req.params.screamId)
         .limit(1);
 
@@ -90,7 +90,7 @@ exports.likeScream = (req, res) => {
         .then((data) => {
             if (data.empty) {
                 const new_like = {
-                    userHandle: req.user.handle,
+                    handle: req.user.handle,
                     screamId: req.params.screamId
                 }
                 db
@@ -118,7 +118,7 @@ exports.likeScream = (req, res) => {
 exports.unlikeScream = (req, res) => {
     const likeDocument = db
         .collection('likes')
-        .where('userHandle', '==', req.user.handle)
+        .where('handle', '==', req.user.handle)
         .where('screamId', '==', req.params.screamId)
         .limit(1);
 
@@ -176,7 +176,7 @@ exports.commentOnScream = (req, res) => {
         })
         .then(() => {
             const new_comment = {
-                userHandle: req.user.handle,
+                handle: req.user.handle,
                 screamId: req.params.screamId,
                 body: req.body.comment,
                 createAt: admin.firestore.Timestamp.fromDate(new Date())

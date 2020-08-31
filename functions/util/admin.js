@@ -8,7 +8,7 @@ firebase.initializeApp(config);
 // firebase emulators:start --import=./data-path --export-on-exit --only firestore
 
 // admin.firestore().settings({
-//     // host: "localhost:8080",
+//     host: "localhost:8080",
 //     ssl: false
 // });
 

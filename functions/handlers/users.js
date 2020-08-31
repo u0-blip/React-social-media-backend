@@ -6,6 +6,7 @@ const { uuid } = require('uuidv4');
 const {
     validateSignupData,
     validateLoginData,
+    reduce_user_details
 } = require('../util/validators')
 
 exports.edit_profile = (req, res) => {
