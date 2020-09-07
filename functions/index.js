@@ -14,7 +14,7 @@ const {
     commentOnScream,
     likeScream,
     unlikeScream,
-    deleteScream
+    deleteScream,
 } = require('./handlers/screams');
 
 const {
@@ -24,8 +24,15 @@ const {
     get_posts_for_user,
     upload_profile_photo,
     edit_profile,
-    getAuthenticatedUser
+    getAuthenticatedUser,
+    getThumbFromHandle
 } = require('./handlers/users');
+
+
+const {
+    markNotificationsSeen,
+    markNotificationsOpen,
+} = require('./handlers/notifications')
 
 // Scream routes
 app.get('/screams', getAllScreams);
@@ -44,13 +51,16 @@ app.delete('/user', FBAuth, Delete_user);
 app.post('/user', FBAuth, edit_profile);
 app.get('/user', FBAuth, getAuthenticatedUser);
 
-app.get('/user/:handle', FBAuth, get_posts_for_user);
+app.get('/user/posts', FBAuth, get_posts_for_user);
 app.post('/user/photo', FBAuth, upload_profile_photo);
 
-exports.api = functions.region('asia-northeast1').https.onRequest(app);
+// Notification routes
+app.post('/notifications/seen', FBAuth, markNotificationsSeen);
+app.post('/notifications/open', FBAuth, markNotificationsOpen);
+
+exports.api = functions.https.onRequest(app);
 
 exports.createNotificationsOnLike = functions
-    .region('asia-northeast1')
     .firestore.document('likes/{id}')
     .onCreate((snapshot) => {
         return db
@@ -66,7 +76,8 @@ exports.createNotificationsOnLike = functions
                         recipient: doc.data().handle,
                         sender: snapshot.data().handle,
                         type: 'like',
-                        read: false,
+                        seen: false,
+                        opened: false,
                         screamId: doc.id
                     });
                 }
@@ -75,7 +86,6 @@ exports.createNotificationsOnLike = functions
     });
 
 exports.deleteNotificationsOnUnLike = functions
-    .region('asia-northeast1')
     .firestore.document('likes/{id}')
     .onDelete((snapshot) => {
         return db
@@ -88,7 +98,6 @@ exports.deleteNotificationsOnUnLike = functions
     });
 
 exports.createNotificationsOnComment = functions
-    .region('asia-northeast1')
     .firestore.document('comments/{id}')
     .onCreate((snapshot) => {
         return db
@@ -102,7 +111,8 @@ exports.createNotificationsOnComment = functions
                             recipient: doc.data().handle,
                             sender: snapshot.data().handle,
                             type: 'comment',
-                            read: false,
+                            seen: false,
+                            opened: false,
                             screamId: doc.id
                         });
                 }
@@ -114,7 +124,6 @@ exports.createNotificationsOnComment = functions
     })
 
 exports.onUserImagechange = functions
-    .region('asia-northeast1')
     .firestore.document('/users/{userId}')
     .onUpdate((change) => {
         console.log(change.before.data());
@@ -137,7 +146,6 @@ exports.onUserImagechange = functions
     })
 
 exports.onScreamDelete = functions
-    .region('asia-northeast1')
     .firestore.document('/scream/{screamId}')
     .onDelete((snapshot, context) => {
         const screamId = context.params.screamId;

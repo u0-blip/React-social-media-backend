@@ -13,7 +13,7 @@ let db = {
     ],
     screams: [
         {
-            userHandle: 'user',
+            handle: 'user',
             body: 'This is a sample scream',
             createdAt: '2019-03-15T10:59:52.798Z',
             likeCount: 5,
@@ -22,7 +22,7 @@ let db = {
     ],
     comments: [
         {
-            userHandle: 'user',
+            handle: 'user',
             screamId: 'kdjsfgdksuufhgkdsufky',
             body: 'nice one mate!',
             createdAt: '2019-03-15T10:59:52.798Z'
@@ -59,11 +59,11 @@ const userDetails = {
     },
     likes: [
         {
-            userHandle: 'user',
+            handle: 'user',
             screamId: 'hh7O5oWfWucVzGbHH2pa'
         },
         {
-            userHandle: 'user',
+            handle: 'user',
             screamId: '3IOnFoQexRcofs5OhBXO'
         }
     ]

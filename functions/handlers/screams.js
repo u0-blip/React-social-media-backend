@@ -1,27 +1,91 @@
 const { admin, db } = require('../util/admin');
 
+
+
 exports.getAllScreams = (req, res) => {
-    db.collection('scream').get()
-        .then(data => {
-            const screams = [];
-            data.forEach(doc => {
-                screams.push(doc.data());
+
+
+    db.collection('scream')
+        .orderBy('createAt', 'desc')
+        .get()
+        .then((data) => {
+            let screams = [];
+            data.forEach((doc) => {
+                screams.push({
+                    screamId: doc.id,
+                    body: doc.data().body,
+                    handle: doc.data().handle,
+                    createAt: doc.data().createAt,
+                    commentCount: doc.data().commentCount,
+                    likeCount: doc.data().likeCount,
+                    userImage: doc.data().userImage
+                });
             });
             return res.json(screams);
         })
-        .catch(err => console.error());
+        .catch((err) => {
+            console.error(err);
+            return res.status(500).json({ error: err.code });
+        });
 };
 
 exports.getScream = (req, res) => {
-    db.collection('scream').get()
-        .then(data => {
-            const screams = [];
-            data.forEach(doc => {
-                screams.push(doc.data());
-            });
-            return res.json(screams);
+
+    const getThumbFromHandle = (handle, data) => {
+        return db.doc(`/user/${handle}`)
+            .get()
+            .then((doc) => {
+                if (doc.exists) {
+                    data.imageUrl = doc.data().imageUrl;
+                } else {
+                    data.imageUrl = `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/${noImg}?alt=media`;
+                }
+            })
+    }
+
+    let screamData = {};
+    db.doc(`/scream/${req.params.screamId}`)
+        .get()
+        .then((doc) => {
+            if (!doc.exists) {
+                return res.status(404).json({ error: 'Scream not found' });
+            }
+            screamData = doc.data();
+            screamData.screamId = doc.id;
+            return db
+                .collection('comments')
+                .orderBy('createAt', 'desc')
+                .where('screamId', '==', req.params.screamId)
+                .get();
         })
-        .catch(err => console.error());
+        .then((data) => {
+            screamData.comments = [];
+            data.forEach((doc) => {
+                let commentData = doc.data();
+                getThumbFromHandle(commentData.handle, commentData)
+                    .then(() => {
+                        screamData.comments.push(commentData);
+                    })
+            });
+        })
+        .then(() => {
+            return db
+                .collection('likes')
+                .orderBy('createAt', 'desc')
+                .where('screamId', '==', req.params.screamId)
+                .get();
+        })
+        .then((data) => {
+            screamData.likes = [];
+            data.forEach((doc) => {
+                screamData.likes.push(doc.data());
+            });
+            return res.json(screamData);
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).json({ error: err.code });
+        });
 };
 
 exports.postOneScream = (req, res) => {
@@ -29,7 +93,7 @@ exports.postOneScream = (req, res) => {
         body: req.body.body,
         handle: req.user.handle,
         userImage: req.user.imageUrl,
-        createAt: admin.firestore.Timestamp.fromDate(new Date()),
+        createAt: new Date().toISOString(),
         likeCount: 0,
         commentCount: 0
     };
@@ -37,7 +101,9 @@ exports.postOneScream = (req, res) => {
         .collection('scream')
         .add(newScream)
         .then((doc) => {
-            res.json({ message: `document ${doc.id} created successfully` });
+            const resScream = newScream;
+            resScream.screamId = doc.id;
+            res.json(resScream);
         })
         .catch((err) => {
             res.status(500).json({ error: 'something went wrong' });
@@ -52,6 +118,8 @@ exports.deleteScream = (req, res) => {
         .then((doc) => {
             if (!doc.exists) {
                 return res.status(404).json({ error: 'Scream not found' });
+            } else if (doc.data().handle != req.user.handle) {
+                return res.status(500).json({ error: 'You cannot delete this post!' })
             } else {
                 return document.delete();
             }
@@ -179,7 +247,7 @@ exports.commentOnScream = (req, res) => {
                 handle: req.user.handle,
                 screamId: req.params.screamId,
                 body: req.body.comment,
-                createAt: admin.firestore.Timestamp.fromDate(new Date())
+                createAt: new Date().toISOString()
             }
             db
                 .collection('comments')

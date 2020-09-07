@@ -31,7 +31,7 @@ exports.validateSignupData = (user) => {
     if (isEmpty(user.password)) errors.password = 'Must not be empty';
     if (user.password !== user.confirmPassword)
         errors.confirmPassword = 'Passwords must match';
-    if (isEmpty(user.userHandle)) errors.handle = 'Must not be empty';
+    if (isEmpty(user.handle)) errors.handle = 'Must not be empty';
 
 
     return {
@@ -47,7 +47,7 @@ exports.reduce_user_details = (data) => {
     if (!isEmpty(data.bio.trim())) user_details.bio = data.bio;
     if (!isEmpty(data.website.trim())) {
         if (data.website.trim().substring(0, 4) !== 'http') {
-            user_details.website = `http://${data.website.trim}`;
+            user_details.website = `https://${data.website.trim()}`;
         } else {
             user_details.website = data.website;
         }

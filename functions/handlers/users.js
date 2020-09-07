@@ -10,6 +10,7 @@ const {
 } = require('../util/validators')
 
 exports.edit_profile = (req, res) => {
+    console.log(req.body)
     let userDetail = reduce_user_details(req.body);
 
     db.doc(`/user/${req.user.handle}`)
@@ -80,7 +81,7 @@ exports.upload_profile_photo = (req, res) => {
 }
 
 exports.get_posts_for_user = (req, res) => {
-    // getting the details about the userHandle, email
+    // getting the details about the handle, email
     let userData = {};
     db
         .doc(`/user/${req.user.handle}`)
@@ -89,7 +90,7 @@ exports.get_posts_for_user = (req, res) => {
             if (doc.exists) {
                 return db
                     .collection('scream')
-                    .where('userHandle', '==', req.user.handle)
+                    .where('handle', '==', req.user.handle)
                     .orderBy('createdAt', 'desc')
                     .get();
             } else {
@@ -102,7 +103,7 @@ exports.get_posts_for_user = (req, res) => {
                 userData.screams.push({
                     body: doc.data().body,
                     createdAt: doc.data().createdAt,
-                    userHandle: doc.data().userHandle,
+                    handle: doc.data().handle,
                     userImage: doc.data().userImage,
                     likeCount: doc.data().likeCount,
                     commentCount: doc.data().commentCount,
@@ -119,10 +120,10 @@ exports.get_posts_for_user = (req, res) => {
 
 
 exports.Delete_user = (req, res) => {
-    let userHandle = req.user.handle;
+    let handle = req.user.handle;
     let userDoc = db
         .collection('user')
-        .where('userHandle', '==', userHandle)
+        .where('handle', '==', handle)
         .limit(1)
 
     userDoc
@@ -148,10 +149,10 @@ exports.Delete_user = (req, res) => {
 exports.sign_up = (req, res) => {
     const newUser = {
         email: req.body.email,
-        userHandle: req.body.userHandle,
+        handle: req.body.handle,
         password: req.body.password,
         confirmPassword: req.body.confirmPassword,
-        createAt: admin.firestore.Timestamp.fromDate(new Date())
+        createAt: new Date().toISOString()
     };
 
     const { valid, errors } = validateSignupData(newUser);
@@ -160,7 +161,7 @@ exports.sign_up = (req, res) => {
     const noImg = 'no-img.png';
 
     let token, userId;
-    db.doc(`/user/${newUser.userHandle}`)
+    db.doc(`/user/${newUser.handle}`)
         .get()
         .then((doc) => {
             if (doc.exists) {
@@ -178,14 +179,14 @@ exports.sign_up = (req, res) => {
         .then((idToken) => {
             token = idToken;
             const userCredentials = {
-                handle: newUser.userHandle,
+                handle: newUser.handle,
                 email: newUser.email,
                 createAt: new Date().toISOString(),
                 //TODO append token to imageURL
                 imageUrl: `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/${noImg}?alt=media`,
                 userId: userId,
             }
-            return db.doc(`/user/${newUser.userHandle}`).set(userCredentials);
+            return db.doc(`/user/${newUser.handle}`).set(userCredentials);
         })
         .then(() => {
             return res.status(201).json({ token })
@@ -245,7 +246,7 @@ exports.getAuthenticatedUser = (req, res) => {
                 user_data.credentials = doc.data();
                 return db
                     .collection('likes')
-                    .where('userHandle', '==', req.user.handle)
+                    .where('handle', '==', req.user.handle)
                     .get();
             } else {
                 return res.status(404).json({ error: "user doesn\'t exist" });
@@ -259,7 +260,7 @@ exports.getAuthenticatedUser = (req, res) => {
             return db
                 .collection('notifications')
                 .where('recipient', '==', req.user.handle)
-                .orderBy('createdAt', 'desc')
+                .orderBy('createAt', 'desc')
                 .limit(10)
                 .get();
         })
@@ -273,7 +274,8 @@ exports.getAuthenticatedUser = (req, res) => {
                     createAt: data.createAt,
                     screamId: data.screamId,
                     type: data.type,
-                    read: data.read,
+                    seen: data.seen,
+                    opened: data.opened,
                     notification_id: doc.id,
                 });
             });
@@ -284,3 +286,4 @@ exports.getAuthenticatedUser = (req, res) => {
             return res.status(500).json({ error: err.code });
         })
 }
+
